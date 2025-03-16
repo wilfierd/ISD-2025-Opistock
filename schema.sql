@@ -50,18 +50,18 @@ INSERT INTO materials (packet_no, part_name, length, width, height, quantity, su
 (1, 'Máy móc', 3000, 345, 345, 10, 'Khai', 'Khai', '05/03/2025'),
 (1, 'Máy móc', 3000, 345, 345, 10, 'Khai', 'Khai', '05/03/2025');
 
-CREATE TABLE IF NOT EXISTS employees (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        email VARCHAR(100) UNIQUE,
-        phone_number VARCHAR(15) NOT NULL,
-        address VARCHAR(255) NOT NULL,
-        date_of_birth DATE NOT NULL,
-        nation_id INT NULL,
-        position VARCHAR(50) NOT NULL,
-        salary DECIMAL(10,2) NOT NULL,
-        date_hire DATE NOT NULL,
-        FOREIGN KEY (nation_id) REFERENCES nations(id) ON DELETE SET NULL ON UPDATE CASCADE);
+-- CREATE TABLE IF NOT EXISTS employees (
+--       id INT AUTO_INCREMENT PRIMARY KEY,
+--         name VARCHAR(100) NOT NULL,
+--         email VARCHAR(100) UNIQUE,
+--         phone_number VARCHAR(15) NOT NULL,
+--         address VARCHAR(255) NOT NULL,
+--         date_of_birth DATE NOT NULL,
+--         nation_id INT NULL,
+--         position VARCHAR(50) NOT NULL,
+--         salary DECIMAL(10,2) NOT NULL,
+--         date_hire DATE NOT NULL,
+--         FOREIGN KEY (nation_id) REFERENCES nations(id) ON DELETE SET NULL ON UPDATE CASCADE);
 
 CREATE TABLE IF NOT EXISTS material_requests (
   id INT PRIMARY KEY AUTO_INCREMENT,
