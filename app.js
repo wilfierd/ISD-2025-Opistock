@@ -396,41 +396,91 @@ app.post('/api/materials', isAuthenticatedAPI, async (req, res) => {
   }
 });
 
+// UPDATE ================================>
+// Modified update route
 app.put('/api/materials/:id', isAuthenticatedAPI, async (req, res) => {
   try {
     const { id } = req.params;
     const { packetNo, partName, length, width, height, quantity, supplier } = req.body;
-    const currentDate = new Date().toLocaleDateString('en-GB');
     
-    await pool.query(
-      `UPDATE materials 
-       SET packet_no = ?, part_name = ?, length = ?, width = ?, height = ?, 
-           quantity = ?, supplier = ?, updated_by = ?, last_updated = ? 
-       WHERE id = ?`,
-      [packetNo, partName, length, width, height, quantity, supplier, 
-       req.session.user.username, currentDate, id]
-    );
-    
-    res.json({ success: true, message: 'Material updated successfully' });
+    // If user is admin, update directly
+    if (req.session.user.role === 'admin') {
+      const currentDate = new Date().toLocaleDateString('en-GB');
+      
+      await pool.query(
+        `UPDATE materials 
+         SET packet_no = ?, part_name = ?, length = ?, width = ?, height = ?, 
+             quantity = ?, supplier = ?, updated_by = ?, last_updated = ? 
+         WHERE id = ?`,
+        [packetNo, partName, length, width, height, quantity, supplier, 
+         req.session.user.username, currentDate, id]
+      );
+      
+      return res.json({ success: true, message: 'Material updated successfully' });
+    } else {
+      // For regular users, create an update request
+      const updatedData = {
+        packet_no: packetNo,
+        part_name: partName,
+        length,
+        width,
+        height,
+        quantity,
+        supplier
+      };
+      
+      const [result] = await pool.query(
+        `INSERT INTO material_requests 
+         (material_id, request_type, updated_data, requested_by, status, created_at) 
+         VALUES (?, 'update', ?, ?, 'pending', NOW())`,
+        [id, JSON.stringify(updatedData), req.session.user.id]
+      );
+      
+      return res.json({
+        success: true,
+        message: 'Update request submitted for admin approval',
+        requestId: result.insertId
+      });
+    }
   } catch (error) {
     console.error('Error updating material:', error);
     res.status(500).json({ success: false, error: 'Failed to update material' });
   }
 });
 
+// UPDATE ===================================>
+// Modified delete route
 app.delete('/api/materials/:id', isAuthenticatedAPI, async (req, res) => {
   try {
     const { id } = req.params;
     
-    await pool.query('DELETE FROM materials WHERE id = ?', [id]);
-    
-    res.json({ success: true, message: 'Material deleted successfully' });
+    // If user is admin, delete directly
+    if (req.session.user.role === 'admin') {
+      await pool.query('DELETE FROM materials WHERE id = ?', [id]);
+      return res.json({ success: true, message: 'Material deleted successfully' });
+    } else {
+      // For regular users, create a delete request
+      const [result] = await pool.query(
+        `INSERT INTO material_requests 
+         (material_id, request_type, updated_data, requested_by, status, created_at) 
+         VALUES (?, 'delete', '{}', ?, 'pending', NOW())`,
+        [id, req.session.user.id]
+      );
+      
+      return res.json({
+        success: true,
+        message: 'Delete request submitted for admin approval',
+        requestId: result.insertId
+      });
+    }
   } catch (error) {
     console.error('Error deleting material:', error);
     res.status(500).json({ success: false, error: 'Failed to delete material' });
   }
 });
 
+// UPDATE ===================================>
+// Modified bulk delete route
 app.delete('/api/materials', isAuthenticatedAPI, async (req, res) => {
   try {
     const { ids } = req.body;
@@ -439,10 +489,27 @@ app.delete('/api/materials', isAuthenticatedAPI, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid material IDs' });
     }
     
-    const placeholders = ids.map(() => '?').join(',');
-    await pool.query(`DELETE FROM materials WHERE id IN (${placeholders})`, ids);
-    
-    res.json({ success: true, message: 'Materials deleted successfully' });
+    // If user is admin, delete directly
+    if (req.session.user.role === 'admin') {
+      const placeholders = ids.map(() => '?').join(',');
+      await pool.query(`DELETE FROM materials WHERE id IN (${placeholders})`, ids);
+      
+      return res.json({ success: true, message: 'Materials deleted successfully' });
+    } else {
+      // For regular users, create delete requests for each material
+      const values = ids.map(id => [id, 'delete', '{}', req.session.user.id, 'pending', new Date()]);
+      await pool.query(
+        `INSERT INTO material_requests 
+         (material_id, request_type, updated_data, requested_by, status, created_at) 
+         VALUES ?`,
+        [values]
+      );
+      
+      return res.json({
+        success: true,
+        message: 'Delete requests submitted for admin approval'
+      });
+    }
   } catch (error) {
     console.error('Error deleting materials:', error);
     res.status(500).json({ success: false, error: 'Failed to delete materials' });
@@ -467,204 +534,216 @@ app.get('/api/materials/:id', isAuthenticatedAPI, async (req, res) => {
   }
 });
 
-// UPDATE
+// ===== SEARCH AND FILTER MATERIALS =====  HÂHHAHAHAHAHAHAHAAAAHHAHAHAA
+app.get('/api/materials/search', isAuthenticatedAPI, async (req, res) => {
+  try {
+    const { searchTerm, filterBy } = req.query;
+    
+    // Validate filterBy is one of the allowed options
+    const allowedFilters = ['packet_no', 'part_name', 'supplier', 'updated_by'];
+    const filter = allowedFilters.includes(filterBy) ? filterBy : null;
+    
+    let query = 'SELECT * FROM materials WHERE 1=1';
+    let queryParams = [];
+    
+    // Add search condition if searchTerm provided
+    if (searchTerm && searchTerm.trim() !== '') {
+      if (filter) {
+        // Filter by specific column
+        query += ` AND ${filter} LIKE ?`;
+        queryParams.push(`%${searchTerm}%`);
+      } else {
+        // Search across all filterable columns if no specific filter
+        query += ` AND (packet_no LIKE ? OR part_name LIKE ? OR supplier LIKE ? OR updated_by LIKE ?)`;
+        queryParams.push(`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`);
+      }
+    }
+    
+    query += ' ORDER BY id DESC';
+    
+    const [materials] = await pool.query(query, queryParams);
+    
+    res.json({
+      success: true,
+      data: materials,
+      filters: allowedFilters
+    });
+  } catch (error) {
+    console.error('Error searching materials:', error);
+    res.status(500).json({ success: false, error: 'Failed to search materials' });
+  }
+});
 
-// Employee Routes
-app.get('/admin/human-resources', authenticateToken, (req, res) => {
-    // Fetch employees with their nation names
-    const query = `
-      SELECT e.*, n.name as nation_name 
-      FROM employees e
-      LEFT JOIN nations n ON e.nation_id = n.id
-      ORDER BY e.name ASC
-    `;
+// ===== MATERIAL CHANGE REQUESTS API =====
+
+// Create a request for material update or deletion
+app.post('/api/material-requests', isAuthenticatedAPI, async (req, res) => {
+  try {
+    const { materialId, requestType, updatedData } = req.body;
     
-    db.query(query, (err, results) => {
-      if (err) {
-        console.error('Error fetching employees:', err);
-        return res.status(500).json({ message: 'Error fetching employees' });
-      }
-      res.status(200).json(results);
-    });
-  });
-  
-app.get('/admin/human-resources/:id', authenticateToken, (req, res) => {
-    // Fetch employee with nation name
-    const query = `
-      SELECT e.*, n.name as nation_name 
-      FROM employees e
-      LEFT JOIN nations n ON e.nation_id = n.id
-      WHERE e.id = ?
-    `;
-    
-    db.query(query, [req.params.id], (err, results) => {
-      if (err) {
-        console.error('Error fetching employee:', err);
-        return res.status(500).json({ message: 'Error fetching employee' });
-      }
-      if (results.length === 0) return res.status(404).json({ message: 'Employee not found' });
-      res.status(200).json(results[0]);
-    });
-  });
-  
-// Get nations for dropdown
-app.get('/admin/nations', authenticateToken, (req, res) => {
-    db.query('SELECT id, name FROM nations ORDER BY name ASC', (err, results) => {
-      if (err) {
-        console.error('Error fetching nations:', err);
-        return res.status(500).json({ message: 'Error fetching nations' });
-      }
-      res.status(200).json(results);
-    });
-  });
-  
-app.post('/admin/human-resources', authenticateToken, isAdmin, async (req, res) => {
-    const { name, email, phone_number, address, date_of_birth, nation_id, position, salary, date_hire, other_nation } = req.body;
-    
-    // Kiểm tra các trường bắt buộc
-    if (!name || !phone_number || !address || !date_of_birth || !position || !salary || !date_hire) {
-      return res.status(400).json({ message: 'Required fields missing' });
+    // Validate request type
+    if (!['update', 'delete'].includes(requestType)) {
+      return res.status(400).json({ success: false, error: 'Invalid request type' });
     }
-  
+    
+    // Validate material exists
+    const [materialExists] = await pool.query('SELECT id FROM materials WHERE id = ?', [materialId]);
+    if (materialExists.length === 0) {
+      return res.status(404).json({ success: false, error: 'Material not found' });
+    }
+    
+    // For update requests, validate we have updated data
+    if (requestType === 'update' && (!updatedData || Object.keys(updatedData).length === 0)) {
+      return res.status(400).json({ success: false, error: 'No update data provided' });
+    }
+    
+    // Insert the request into the database
+    const [result] = await pool.query(
+      `INSERT INTO material_requests 
+       (material_id, request_type, updated_data, requested_by, status, created_at) 
+       VALUES (?, ?, ?, ?, 'pending', NOW())`,
+      [materialId, requestType, JSON.stringify(updatedData || {}), req.session.user.id]
+    );
+    
+    res.status(201).json({
+      success: true, 
+      message: 'Request submitted successfully',
+      requestId: result.insertId
+    });
+  } catch (error) {
+    console.error('Error creating material request:', error);
+    res.status(500).json({ success: false, error: 'Failed to submit request' });
+  }
+});
+
+// Get all pending requests (admin only)
+app.get('/api/material-requests', isAuthenticatedAPI, isAdminAPI, async (req, res) => {
+  try {
+    const [requests] = await pool.query(`
+      SELECT r.*, m.packet_no, m.part_name, u.username as requested_by_username 
+      FROM material_requests r
+      JOIN materials m ON r.material_id = m.id
+      JOIN users u ON r.requested_by = u.id
+      WHERE r.status = 'pending'
+      ORDER BY r.created_at DESC
+    `);
+    
+    // Parse the updated_data JSON for each request
+    const formattedRequests = requests.map(req => ({
+      ...req,
+      updated_data: JSON.parse(req.updated_data || '{}')
+    }));
+    
+    res.json({ success: true, data: formattedRequests });
+  } catch (error) {
+    console.error('Error fetching material requests:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch requests' });
+  }
+});
+
+// Get user's own pending requests
+app.get('/api/material-requests/my', isAuthenticatedAPI, async (req, res) => {
+  try {
+    const [requests] = await pool.query(`
+      SELECT r.*, m.packet_no, m.part_name
+      FROM material_requests r
+      JOIN materials m ON r.material_id = m.id
+      WHERE r.requested_by = ? AND r.status = 'pending'
+      ORDER BY r.created_at DESC
+    `, [req.session.user.id]);
+    
+    // Parse the updated_data JSON for each request
+    const formattedRequests = requests.map(req => ({
+      ...req,
+      updated_data: JSON.parse(req.updated_data || '{}')
+    }));
+    
+    res.json({ success: true, data: formattedRequests });
+  } catch (error) {
+    console.error('Error fetching user requests:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch requests' });
+  }
+});
+
+// Approve or reject a request (admin only)
+app.put('/api/material-requests/:id', isAuthenticatedAPI, isAdminAPI, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, comment } = req.body;
+    
+    // Validate status
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ success: false, error: 'Invalid status' });
+    }
+    
+    // Start a transaction
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+    
     try {
-      // Xử lý nation_id nếu người dùng chọn "Other"
-      let finalNationId = nation_id;
+      // Get the request details
+      const [requests] = await connection.query(
+        'SELECT * FROM material_requests WHERE id = ? AND status = "pending"',
+        [id]
+      );
       
-      if (other_nation && other_nation.trim() !== '') {
-        // Kiểm tra xem nation đã tồn tại chưa
-        db.query('SELECT id FROM nations WHERE name = ?', [other_nation], (err, results) => {
-          if (err) {
-            console.error('Error checking nation:', err);
-            return res.status(500).json({ message: 'Error processing nation' });
-          }
-          
-          if (results.length > 0) {
-            // Nếu nation đã tồn tại, sử dụng id của nation đó
-            finalNationId = results[0].id;
-            insertEmployee(finalNationId);
-          } else {
-            // Nếu nation chưa tồn tại, tạo mới
-            db.query('INSERT INTO nations (name) VALUES (?)', [other_nation], (err, result) => {
-              if (err) {
-                console.error('Error creating new nation:', err);
-                return res.status(500).json({ message: 'Error creating new nation' });
-              }
-              finalNationId = result.insertId;
-              insertEmployee(finalNationId);
-            });
-          }
-        });
-      } else {
-        // Nếu không phải "Other", sử dụng nation_id đã chọn
-        insertEmployee(finalNationId);
+      if (requests.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({ success: false, error: 'Request not found or already processed' });
       }
       
-      function insertEmployee(nationId) {
-        // Thêm nhân viên mới vào cơ sở dữ liệu
-        const query = `
-          INSERT INTO employees 
-          (name, email, phone_number, address, date_of_birth, nation_id, position, salary, date_hire) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-        
-        db.query(
-          query,
-          [name, email || null, phone_number, address, date_of_birth, nationId, position, salary, date_hire],
-          (err, result) => {
-            if (err) {
-              console.error('Error adding employee:', err);
-              return res.status(500).json({ message: 'Error adding employee' });
-            }
-            res.status(201).json({ message: 'Employee added successfully', employeeId: result.insertId });
+      const request = requests[0];
+      const updatedData = JSON.parse(request.updated_data || '{}');
+      
+      // Update the request status
+      await connection.query(
+        'UPDATE material_requests SET status = ?, processed_by = ?, processed_at = NOW(), comment = ? WHERE id = ?',
+        [status, req.session.user.id, comment || null, id]
+      );
+      
+      // If approved, apply the changes
+      if (status === 'approved') {
+        if (request.request_type === 'update') {
+          // Build update query dynamically
+          const fields = Object.keys(updatedData);
+          if (fields.length > 0) {
+            const updateFields = fields.map(field => `${field} = ?`).join(', ');
+            const values = fields.map(field => updatedData[field]);
+            
+            // Add the updated_by and last_updated
+            const currentDate = new Date().toLocaleDateString('en-GB');
+            const query = `UPDATE materials SET ${updateFields}, updated_by = ?, last_updated = ? WHERE id = ?`;
+            
+            // Execute the update
+            await connection.query(
+              query,
+              [...values, req.session.user.username, currentDate, request.material_id]
+            );
           }
-        );
+        } else if (request.request_type === 'delete') {
+          // Execute the delete
+          await connection.query('DELETE FROM materials WHERE id = ?', [request.material_id]);
+        }
       }
+      
+      // Commit the transaction
+      await connection.commit();
+      
+      res.json({
+        success: true,
+        message: `Request ${status === 'approved' ? 'approved and changes applied' : 'rejected'}`
+      });
     } catch (error) {
-      console.error('Error in employee creation:', error);
-      res.status(500).json({ message: 'Error processing request' });
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
     }
-  });
-  
-app.put('/admin/human-resources/:id', authenticateToken, isAdmin, (req, res) => {
-    const { name, email, phone_number, address, date_of_birth, nation_id, position, salary, date_hire, other_nation } = req.body;
-    
-    // Kiểm tra các trường bắt buộc
-    if (!name || !phone_number || !address || !date_of_birth || !position || !salary || !date_hire) {
-      return res.status(400).json({ message: 'Required fields missing' });
-    }
-  
-    try {
-      // Xử lý nation_id nếu người dùng chọn "Other"
-      let finalNationId = nation_id;
-      
-      if (other_nation && other_nation.trim() !== '') {
-        // Kiểm tra xem nation đã tồn tại chưa
-        db.query('SELECT id FROM nations WHERE name = ?', [other_nation], (err, results) => {
-          if (err) {
-            console.error('Error checking nation:', err);
-            return res.status(500).json({ message: 'Error processing nation' });
-          }
-          
-          if (results.length > 0) {
-            // Nếu nation đã tồn tại, sử dụng id của nation đó
-            finalNationId = results[0].id;
-            updateEmployee(finalNationId);
-          } else {
-            // Nếu nation chưa tồn tại, tạo mới
-            db.query('INSERT INTO nations (name) VALUES (?)', [other_nation], (err, result) => {
-              if (err) {
-                console.error('Error creating new nation:', err);
-                return res.status(500).json({ message: 'Error creating new nation' });
-              }
-              finalNationId = result.insertId;
-              updateEmployee(finalNationId);
-            });
-          }
-        });
-      } else {
-        // Nếu không phải "Other", sử dụng nation_id đã chọn
-        updateEmployee(finalNationId);
-      }
-      
-      function updateEmployee(nationId) {
-        // Cập nhật thông tin nhân viên
-        const query = `
-          UPDATE employees 
-          SET name = ?, email = ?, phone_number = ?, address = ?, 
-              date_of_birth = ?, nation_id = ?, position = ?, salary = ?, date_hire = ? 
-          WHERE id = ?
-        `;
-        
-        db.query(
-          query,
-          [name, email || null, phone_number, address, date_of_birth, nationId, position, salary, date_hire, req.params.id],
-          (err, result) => {
-            if (err) {
-              console.error('Error updating employee:', err);
-              return res.status(500).json({ message: 'Error updating employee' });
-            }
-            if (result.affectedRows === 0) return res.status(404).json({ message: 'Employee not found' });
-            res.status(200).json({ message: 'Employee updated successfully' });
-          }
-        );
-      }
-    } catch (error) {
-      console.error('Error in employee update:', error);
-      res.status(500).json({ message: 'Error processing request' });
-    }
-  });
-  
-  app.delete('/admin/human-resources/:id', authenticateToken, isAdmin, (req, res) => {
-    db.query('DELETE FROM employees WHERE id = ?', [req.params.id], (err, result) => {
-      if (err) {
-        console.error('Error deleting employee:', err);
-        return res.status(500).json({ message: 'Error deleting employee' });
-      }
-      if (result.affectedRows === 0) return res.status(404).json({ message: 'Employee not found' });
-      res.status(200).json({ message: 'Employee deleted successfully' });
-    });
-  });
-// END UPDATE
+  } catch (error) {
+    console.error('Error processing request:', error);
+    res.status(500).json({ success: false, error: 'Failed to process request' });
+  }
+});
 
 // ===== SERVE REACT APP =====
 
