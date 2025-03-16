@@ -467,6 +467,205 @@ app.get('/api/materials/:id', isAuthenticatedAPI, async (req, res) => {
   }
 });
 
+// UPDATE
+
+// Employee Routes
+app.get('/admin/human-resources', authenticateToken, (req, res) => {
+    // Fetch employees with their nation names
+    const query = `
+      SELECT e.*, n.name as nation_name 
+      FROM employees e
+      LEFT JOIN nations n ON e.nation_id = n.id
+      ORDER BY e.name ASC
+    `;
+    
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error('Error fetching employees:', err);
+        return res.status(500).json({ message: 'Error fetching employees' });
+      }
+      res.status(200).json(results);
+    });
+  });
+  
+app.get('/admin/human-resources/:id', authenticateToken, (req, res) => {
+    // Fetch employee with nation name
+    const query = `
+      SELECT e.*, n.name as nation_name 
+      FROM employees e
+      LEFT JOIN nations n ON e.nation_id = n.id
+      WHERE e.id = ?
+    `;
+    
+    db.query(query, [req.params.id], (err, results) => {
+      if (err) {
+        console.error('Error fetching employee:', err);
+        return res.status(500).json({ message: 'Error fetching employee' });
+      }
+      if (results.length === 0) return res.status(404).json({ message: 'Employee not found' });
+      res.status(200).json(results[0]);
+    });
+  });
+  
+// Get nations for dropdown
+app.get('/admin/nations', authenticateToken, (req, res) => {
+    db.query('SELECT id, name FROM nations ORDER BY name ASC', (err, results) => {
+      if (err) {
+        console.error('Error fetching nations:', err);
+        return res.status(500).json({ message: 'Error fetching nations' });
+      }
+      res.status(200).json(results);
+    });
+  });
+  
+app.post('/admin/human-resources', authenticateToken, isAdmin, async (req, res) => {
+    const { name, email, phone_number, address, date_of_birth, nation_id, position, salary, date_hire, other_nation } = req.body;
+    
+    // Kiểm tra các trường bắt buộc
+    if (!name || !phone_number || !address || !date_of_birth || !position || !salary || !date_hire) {
+      return res.status(400).json({ message: 'Required fields missing' });
+    }
+  
+    try {
+      // Xử lý nation_id nếu người dùng chọn "Other"
+      let finalNationId = nation_id;
+      
+      if (other_nation && other_nation.trim() !== '') {
+        // Kiểm tra xem nation đã tồn tại chưa
+        db.query('SELECT id FROM nations WHERE name = ?', [other_nation], (err, results) => {
+          if (err) {
+            console.error('Error checking nation:', err);
+            return res.status(500).json({ message: 'Error processing nation' });
+          }
+          
+          if (results.length > 0) {
+            // Nếu nation đã tồn tại, sử dụng id của nation đó
+            finalNationId = results[0].id;
+            insertEmployee(finalNationId);
+          } else {
+            // Nếu nation chưa tồn tại, tạo mới
+            db.query('INSERT INTO nations (name) VALUES (?)', [other_nation], (err, result) => {
+              if (err) {
+                console.error('Error creating new nation:', err);
+                return res.status(500).json({ message: 'Error creating new nation' });
+              }
+              finalNationId = result.insertId;
+              insertEmployee(finalNationId);
+            });
+          }
+        });
+      } else {
+        // Nếu không phải "Other", sử dụng nation_id đã chọn
+        insertEmployee(finalNationId);
+      }
+      
+      function insertEmployee(nationId) {
+        // Thêm nhân viên mới vào cơ sở dữ liệu
+        const query = `
+          INSERT INTO employees 
+          (name, email, phone_number, address, date_of_birth, nation_id, position, salary, date_hire) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        
+        db.query(
+          query,
+          [name, email || null, phone_number, address, date_of_birth, nationId, position, salary, date_hire],
+          (err, result) => {
+            if (err) {
+              console.error('Error adding employee:', err);
+              return res.status(500).json({ message: 'Error adding employee' });
+            }
+            res.status(201).json({ message: 'Employee added successfully', employeeId: result.insertId });
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error in employee creation:', error);
+      res.status(500).json({ message: 'Error processing request' });
+    }
+  });
+  
+app.put('/admin/human-resources/:id', authenticateToken, isAdmin, (req, res) => {
+    const { name, email, phone_number, address, date_of_birth, nation_id, position, salary, date_hire, other_nation } = req.body;
+    
+    // Kiểm tra các trường bắt buộc
+    if (!name || !phone_number || !address || !date_of_birth || !position || !salary || !date_hire) {
+      return res.status(400).json({ message: 'Required fields missing' });
+    }
+  
+    try {
+      // Xử lý nation_id nếu người dùng chọn "Other"
+      let finalNationId = nation_id;
+      
+      if (other_nation && other_nation.trim() !== '') {
+        // Kiểm tra xem nation đã tồn tại chưa
+        db.query('SELECT id FROM nations WHERE name = ?', [other_nation], (err, results) => {
+          if (err) {
+            console.error('Error checking nation:', err);
+            return res.status(500).json({ message: 'Error processing nation' });
+          }
+          
+          if (results.length > 0) {
+            // Nếu nation đã tồn tại, sử dụng id của nation đó
+            finalNationId = results[0].id;
+            updateEmployee(finalNationId);
+          } else {
+            // Nếu nation chưa tồn tại, tạo mới
+            db.query('INSERT INTO nations (name) VALUES (?)', [other_nation], (err, result) => {
+              if (err) {
+                console.error('Error creating new nation:', err);
+                return res.status(500).json({ message: 'Error creating new nation' });
+              }
+              finalNationId = result.insertId;
+              updateEmployee(finalNationId);
+            });
+          }
+        });
+      } else {
+        // Nếu không phải "Other", sử dụng nation_id đã chọn
+        updateEmployee(finalNationId);
+      }
+      
+      function updateEmployee(nationId) {
+        // Cập nhật thông tin nhân viên
+        const query = `
+          UPDATE employees 
+          SET name = ?, email = ?, phone_number = ?, address = ?, 
+              date_of_birth = ?, nation_id = ?, position = ?, salary = ?, date_hire = ? 
+          WHERE id = ?
+        `;
+        
+        db.query(
+          query,
+          [name, email || null, phone_number, address, date_of_birth, nationId, position, salary, date_hire, req.params.id],
+          (err, result) => {
+            if (err) {
+              console.error('Error updating employee:', err);
+              return res.status(500).json({ message: 'Error updating employee' });
+            }
+            if (result.affectedRows === 0) return res.status(404).json({ message: 'Employee not found' });
+            res.status(200).json({ message: 'Employee updated successfully' });
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error in employee update:', error);
+      res.status(500).json({ message: 'Error processing request' });
+    }
+  });
+  
+  app.delete('/admin/human-resources/:id', authenticateToken, isAdmin, (req, res) => {
+    db.query('DELETE FROM employees WHERE id = ?', [req.params.id], (err, result) => {
+      if (err) {
+        console.error('Error deleting employee:', err);
+        return res.status(500).json({ message: 'Error deleting employee' });
+      }
+      if (result.affectedRows === 0) return res.status(404).json({ message: 'Employee not found' });
+      res.status(200).json({ message: 'Employee deleted successfully' });
+    });
+  });
+// END UPDATE
+
 // ===== SERVE REACT APP =====
 
 // For React Single Page Application routes
