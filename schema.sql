@@ -50,18 +50,6 @@ INSERT INTO materials (packet_no, part_name, length, width, height, quantity, su
 (1, 'Máy móc', 3000, 345, 345, 10, 'Khai', 'Khai', '05/03/2025'),
 (1, 'Máy móc', 3000, 345, 345, 10, 'Khai', 'Khai', '05/03/2025');
 
-CREATE TABLE IF NOT EXISTS nations (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(50) NOT NULL UNIQUE,
-    );
-INSERT INTO nations (name) VALUES 
-    'Kinh', 'Tày', 'Thái', 'Mường', 'Khơ Me', 'HMông', 'Nùng', 'Dao', 'Gia Rai', 'Ê Đê',
-        'Ba Na', 'Xơ Đăng', 'Sán Chay', 'Cơ Ho', 'Chăm', 'Sán Dìu', 'Hrê', 'Mnông', 'Ra Glai',
-        'Xtiêng', 'Bru - Vân Kiều', 'Thổ', 'Giáy', 'Cơ Tu', 'Gié Triêng', 'Mạ', 'Kháng', 'Co',
-        'Tà Ôi', 'Chơ Ro', 'Lào', 'La Chí', 'La Ha', 'Phù Lá', 'La Hủ', 'Lự', 'Lô Lô', 'Chứt',
-        'Mảng', 'Pà Thẻn', 'Co Lao', 'Cống', 'Bố Y', 'Si La', 'Hà Nhì', 'Cờ Lao', 'Ngái', 'Xinh Mun',
-        'Pu Péo', 'Brâu', 'Ơ Đu', 'Rơ Măm', 'Khác';
-
 CREATE TABLE IF NOT EXISTS employees (
       id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
@@ -75,3 +63,18 @@ CREATE TABLE IF NOT EXISTS employees (
         date_hire DATE NOT NULL,
         FOREIGN KEY (nation_id) REFERENCES nations(id) ON DELETE SET NULL ON UPDATE CASCADE);
 
+CREATE TABLE IF NOT EXISTS material_requests (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  material_id INT NOT NULL,
+  request_type ENUM('update', 'delete') NOT NULL,
+  updated_data JSON,
+  requested_by INT NOT NULL,
+  status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+  created_at DATETIME NOT NULL,
+  processed_by INT,
+  processed_at DATETIME,
+  comment TEXT,
+  FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE,
+  FOREIGN KEY (requested_by) REFERENCES users(id),
+  FOREIGN KEY (processed_by) REFERENCES users(id)
+);
