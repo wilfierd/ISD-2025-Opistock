@@ -12,8 +12,7 @@ import { useAuthStatus } from './hooks/useAuth';
 function App() {
   const { data: authData, isLoading } = useAuthStatus();
   const user = authData?.user || null;
-  const isAdmin = user?.role === 'admin';
-
+  const isAdmin = user?.role === 'admin' || user?.role === 'quản lý';
   if (isLoading) {
     return <div className="text-center mt-5">Loading...</div>;
   }

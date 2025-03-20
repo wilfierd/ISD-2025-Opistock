@@ -51,7 +51,7 @@ const isAuthenticatedAPI = (req, res, next) => {
 
 // Admin role check middleware
 const isAdminAPI = (req, res, next) => {
-  if (req.session.user && req.session.user.role === 'admin') {
+  if (req.session.user && (req.session.user.role === 'admin' || req.session.user.role === 'quản lý')) {
     next();
   } else {
     res.status(403).json({ success: false, error: 'Insufficient permissions' });
@@ -133,17 +133,18 @@ function safelyParseJSON(json) {
 }
 
 // Then update your API route
+// Trong file app.js, tìm route sau:
 app.get('/api/material-requests', isAuthenticatedAPI, async (req, res) => {
   try {
     // Get request filter from query params
     const status = req.query.status || 'pending';
     
-    // Admins see all requests, regular users only see their own
-    const whereClause = req.session.user.role === 'admin' 
+    // Sửa phần này để bao gồm cả quản lý
+    const whereClause = (req.session.user.role === 'admin' || req.session.user.role === 'quản lý') 
       ? 'WHERE mr.status = ?' 
       : 'WHERE mr.status = ? AND mr.user_id = ?';
     
-    const queryParams = req.session.user.role === 'admin'
+    const queryParams = (req.session.user.role === 'admin' || req.session.user.role === 'quản lý')
       ? [status]
       : [status, req.session.user.id];
     
