@@ -17,7 +17,7 @@ function Login() {
       <div className="login-container" style={{ maxWidth: '400px', padding: '30px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}>
         <div className="login-header text-center mb-4">
           <h2 style={{ color: '#0a4d8c' }}>Inventory Management</h2>
-          <p>Enter your credentials to access the system</p>
+          <p>Nhập thông tin đăng nhập của bạn để truy cập hệ thống</p>
         </div>
         
         {error && (
@@ -28,7 +28,7 @@ function Login() {
         
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
-            <label htmlFor="username" className="form-label">Username</label>
+            <label htmlFor="username" className="form-label">Tài khoản</label>
             <input 
               type="text" 
               className="form-control" 
@@ -39,7 +39,7 @@ function Login() {
             />
           </div>
           <div className="mb-3">
-            <label htmlFor="password" className="form-label">Password</label>
+            <label htmlFor="password" className="form-label">Mật khẩu</label>
             <input 
               type="password" 
               className="form-control" 
