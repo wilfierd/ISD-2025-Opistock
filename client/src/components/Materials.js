@@ -258,7 +258,7 @@ function Materials({ user }) {
               <input 
                 type="text" 
                 className="form-control" 
-                placeholder="Tìm sản phẩm theo tên"
+                placeholder="Tìm sản phẩm theo tên.."
                 value={searchTerm}
                 onChange={handleSearch}
               />
@@ -270,7 +270,7 @@ function Materials({ user }) {
               onClick={handleAddClick}
               disabled={createMaterial.isPending}
             >
-              {createMaterial.isPending ? 'Adding...' : 'Add'}
+              {createMaterial.isPending ? 'Adding...' : 'Thêm vật phẩm'}
             </button>
             <button 
               className="btn btn-primary btn-action" 
@@ -284,7 +284,7 @@ function Materials({ user }) {
               disabled={selectedMaterials.size === 0 || deleteMaterial.isPending || deleteBatchMaterials.isPending}
               onClick={handleDeleteClick}
             >
-              {(deleteMaterial.isPending || deleteBatchMaterials.isPending) ? 'Deleting...' : 'Delete'}
+              {(deleteMaterial.isPending || deleteBatchMaterials.isPending) ? 'Deleting...' : 'Xoá vật phẩm'}
             </button>
           </div>
         </div>
@@ -311,10 +311,10 @@ function Materials({ user }) {
                   <th width="10%">Dài</th>
                   <th width="10%">Rộng</th>
                   <th width="10%">Cao</th>
-                  <th width="5%">Quantity</th>
-                  <th width="15%">Supplier</th>
-                  <th width="10%">Updated by</th>
-                  <th width="10%">Last Updated</th>
+                  <th width="5%">Số lượng</th>
+                  <th width="15%">Nhà cung cấp</th>
+                  <th width="10%">Người cập nhật</th>
+                  <th width="10%">Cập nhật lần cuối</th>
                   <th width="5%"></th>
                 </tr>
               </thead>
@@ -342,7 +342,7 @@ function Materials({ user }) {
                       <button 
                         className="btn btn-sm" 
                         onClick={() => handlePrint(material.id)}
-                        title="Generate QR Code"
+                        title="Khởi tạo mã QR"
                       >
                         <i className="fas fa-print"></i>
                       </button>
@@ -351,7 +351,7 @@ function Materials({ user }) {
                 ))}
                 {filteredMaterials.length === 0 && (
                   <tr>
-                    <td colSpan="11" className="text-center py-3">No materials found</td>
+                    <td colSpan="11" className="text-center py-3">Không tìm thấy nguyên vật liệu!</td>
                   </tr>
                 )}
               </tbody>
