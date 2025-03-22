@@ -277,7 +277,7 @@ function Materials({ user }) {
               disabled={selectedMaterials.size !== 1 || updateMaterial.isPending}
               onClick={handleEditClick}
             >
-              {updateMaterial.isPending ? 'Editing...' : 'Edit'}
+              {updateMaterial.isPending ? 'Editing...' : 'Chỉnh sửa'}
             </button>
             <button 
               className="btn btn-primary btn-action" 
@@ -474,7 +474,7 @@ function Materials({ user }) {
                   onClick={handleSaveClick}
                   disabled={createMaterial.isPending || updateMaterial.isPending}
                 >
-                  {(createMaterial.isPending || updateMaterial.isPending) ? 'Saving...' : 'Save'}
+                  {(createMaterial.isPending || updateMaterial.isPending) ? 'Saving...' : 'Lưu'}
                 </button>
               </div>
             </div>
@@ -512,7 +512,7 @@ function Materials({ user }) {
                   onClick={handleConfirmDelete}
                   disabled={deleteMaterial.isPending || deleteBatchMaterials.isPending}
                 >
-                  {(deleteMaterial.isPending || deleteBatchMaterials.isPending) ? 'Deleting...' : 'Delete'}
+                  {(deleteMaterial.isPending || deleteBatchMaterials.isPending) ? 'Deleting...' : 'Xoá vật phẩm'}
                 </button>
               </div>
             </div>
