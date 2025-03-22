@@ -49,7 +49,7 @@ function MaterialDetail({ user }) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
         <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+          <span className="visually-hidden">Đang tải...</span>
         </div>
       </div>
     );
@@ -74,7 +74,7 @@ function MaterialDetail({ user }) {
         <div className="card shadow">
           <div className="card-header bg-primary text-white">
             <div className="d-flex justify-content-between align-items-center">
-              <h5 className="mb-0">Material Details</h5>
+              <h5 className="mb-0">Thông tin chi tiết vật liệu</h5>
               <button className="btn btn-sm btn-light" onClick={handleBack}>
                 <i className="fas fa-arrow-left me-1"></i> Back to Materials
               </button>
@@ -91,23 +91,23 @@ function MaterialDetail({ user }) {
                       <td>{data.packetNo}</td>
                     </tr>
                     <tr>
-                      <th>Dimensions</th>
+                      <th>Kích thước chiều</th>
                       <td>{data.length} x {data.width} x {data.height}</td>
                     </tr>
                     <tr>
-                      <th>Quantity</th>
+                      <th>Số lượng</th>
                       <td>{data.quantity}</td>
                     </tr>
                     <tr>
-                      <th>Supplier</th>
+                      <th>Nhà cung cấp</th>
                       <td>{data.supplier}</td>
                     </tr>
                     <tr>
-                      <th>Updated By</th>
+                      <th>Người cập nhật</th>
                       <td>{data.updatedBy}</td>
                     </tr>
                     <tr>
-                      <th>Last Updated</th>
+                      <th>Cập nhật lần cuối</th>
                       <td>{data.lastUpdated}</td>
                     </tr>
                   </tbody>
