@@ -374,34 +374,48 @@ app.put("/api/users/:id", isAuthenticatedAPI, async (req, res) => {
     const { id } = req.params;
     const { username, password, fullName, role, phone } = req.body;
 
-    // Normal users can only update their own information, admins can update any user
-    if (
-      req.session.user.role !== "admin" &&
-      req.session.user.id !== parseInt(id)
-    ) {
+    const isAdmin = req.session.user.role === "admin";
+    const isManager = req.session.user.role === "quản lý";
+
+    // Normal users can only update their own information
+    // Admins can update any user
+    // Managers can update any user except admins
+    if (req.session.user.id !== parseInt(id) && !isAdmin && !isManager) {
       return res
         .status(403)
         .json({ success: false, error: "Insufficient permissions" });
     }
 
+    // Check if user exists
+    const [existingUserRows] = await pool.query(
+      "SELECT id, role FROM users WHERE id = ?",
+      [id]
+    );
+    if (existingUserRows.length === 0) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    const existingUser = existingUserRows[0];
+
+    // Managers cannot modify admins
+    if (isManager && !isAdmin && existingUser.role === "admin") {
+      return res
+        .status(403)
+        .json({ success: false, error: "Managers cannot modify admin users" });
+    }
+
     // Normal users cannot change their role
-    if (
-      req.session.user.role !== "admin" &&
-      role &&
-      role !== req.session.user.role
-    ) {
+    if (!isAdmin && !isManager && role && role !== req.session.user.role) {
       return res
         .status(403)
         .json({ success: false, error: "Cannot change role" });
     }
 
-    // Check if user exists
-    const [existingUser] = await pool.query(
-      "SELECT id FROM users WHERE id = ?",
-      [id]
-    );
-    if (existingUser.length === 0) {
-      return res.status(404).json({ success: false, error: "User not found" });
+    // Managers cannot set users to admin role
+    if (isManager && !isAdmin && role === "admin") {
+      return res
+        .status(403)
+        .json({ success: false, error: "Managers cannot assign admin role" });
     }
 
     // Check if username exists (if changing username)
@@ -437,7 +451,7 @@ app.put("/api/users/:id", isAuthenticatedAPI, async (req, res) => {
       queryParams.push(fullName);
     }
 
-    if (role && req.session.user.role === "admin") {
+    if (role && (isAdmin || isManager)) {
       updateFields.push("role = ?");
       queryParams.push(role);
     }
@@ -467,41 +481,52 @@ app.put("/api/users/:id", isAuthenticatedAPI, async (req, res) => {
 });
 
 // Delete a user (admin only)
-app.delete(
-  "/api/users/:id",
-  isAuthenticatedAPI,
-  isAdminAPI,
-  async (req, res) => {
-    try {
-      const { id } = req.params;
+app.delete("/api/users/:id", isAuthenticatedAPI, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const isAdmin = req.session.user.role === "admin";
+    const isManager = req.session.user.role === "quản lý";
 
-      // Prevent deleting the current user
-      if (req.session.user.id === parseInt(id)) {
-        return res
-          .status(400)
-          .json({ success: false, error: "Cannot delete yourself" });
-      }
-
-      // Check if user exists
-      const [existingUser] = await pool.query(
-        "SELECT id FROM users WHERE id = ?",
-        [id]
-      );
-      if (existingUser.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, error: "User not found" });
-      }
-
-      await pool.query("DELETE FROM users WHERE id = ?", [id]);
-
-      res.json({ success: true, message: "User deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      res.status(500).json({ success: false, error: "Failed to delete user" });
+    // Only admins and managers can delete users
+    if (!isAdmin && !isManager) {
+      return res
+        .status(403)
+        .json({ success: false, error: "Insufficient permissions" });
     }
+
+    // Prevent deleting the current user
+    if (req.session.user.id === parseInt(id)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Cannot delete yourself" });
+    }
+
+    // Check if user exists and get their role
+    const [existingUserRows] = await pool.query(
+      "SELECT id, role FROM users WHERE id = ?",
+      [id]
+    );
+    if (existingUserRows.length === 0) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    const existingUser = existingUserRows[0];
+
+    // Managers cannot delete admins
+    if (isManager && !isAdmin && existingUser.role === "admin") {
+      return res
+        .status(403)
+        .json({ success: false, error: "Managers cannot delete admin users" });
+    }
+
+    await pool.query("DELETE FROM users WHERE id = ?", [id]);
+
+    res.json({ success: true, message: "User deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    res.status(500).json({ success: false, error: "Failed to delete user" });
   }
-);
+});
 
 // ===== MATERIALS API =====
 
@@ -524,6 +549,15 @@ app.get("/api/materials", isAuthenticatedAPI, async (req, res) => {
 // Create new material with packet_no uniqueness validation
 app.post("/api/materials", isAuthenticatedAPI, async (req, res) => {
   try {
+    // Check if user is admin or manager
+    const isAdmin = req.session.user.role === "admin";
+    const isManager = req.session.user.role === "quản lý";
+
+    if (!isAdmin && !isManager) {
+      return res
+        .status(403)
+        .json({ success: false, error: "Insufficient permissions" });
+    }
     const { packetNo, partName, length, width, height, quantity, supplier } =
       req.body;
     const currentDate = new Date().toLocaleDateString("en-GB");
@@ -610,7 +644,6 @@ app.put("/api/materials/:id", isAuthenticatedAPI, async (req, res) => {
         id,
       ]
     );
-
     res.json({ success: true, message: "Material updated successfully" });
   } catch (error) {
     console.error("Error updating material:", error);

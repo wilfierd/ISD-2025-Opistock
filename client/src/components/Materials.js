@@ -54,7 +54,8 @@ function Materials({ user }) {
 
   // Check if user is admin
   const isAdmin = user.role === 'admin';
-
+  const isManager = user.role === 'quản lý';
+  const hasAdminAccess = isAdmin || isManager; // This check allows both roles to have the same access
   // Filter materials based on search term and search field
   const filteredMaterials = useMemo(() => {
     if (!searchTerm) return materials;
@@ -191,7 +192,7 @@ function Materials({ user }) {
     });
     setValidationErrors({}); // Clear any previous validation errors
     
-    if (isAdmin) {
+    if (hasAdminAccess) {
       setShowAddModal(true);
     } else {
       setRequestType('add');
@@ -201,7 +202,7 @@ function Materials({ user }) {
 
   // Toggle edit modal (in detail view)
   const handleEditClick = () => {
-    if (!isAdmin) {
+    if (!hasAdminAccess) {
       setShowDetailsModal(false);
       setRequestType('edit');
       setShowRequestModal(true);
@@ -210,7 +211,7 @@ function Materials({ user }) {
 
   // Toggle delete modal (in detail view)
   const handleDeleteClick = () => {
-    if (isAdmin) {
+    if (hasAdminAccess) {
       setShowDeleteModal(true);
       setShowDetailsModal(false);
     } else {
@@ -519,9 +520,9 @@ function Materials({ user }) {
             <button 
               className="btn btn-primary" 
               onClick={handleAddClick}
-              disabled={isAdmin ? createMaterial.isPending : createRequest.isPending}
+              disabled={hasAdminAccess ? createMaterial.isPending : createRequest.isPending}
             >
-              {isAdmin ? 'Add' : 'Request Add'}
+              {hasAdminAccess ? 'Add' : 'Request Add'}
             </button>
           </div>
         </div>
@@ -616,7 +617,7 @@ function Materials({ user }) {
                 ></button>
               </div>
               <div className="modal-body">
-                {isAdmin ? (
+                {hasAdminAccess ? (
                   // Admin view - Edit form
                   <form id="materialForm">
                     <div className="row mb-3">
@@ -794,7 +795,7 @@ function Materials({ user }) {
                   Close
                 </button>
                 
-                {isAdmin ? (
+                {hasAdminAccess ? (
                   <>
                     <button 
                       type="button" 

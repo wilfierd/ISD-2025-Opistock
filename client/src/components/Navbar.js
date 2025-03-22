@@ -54,7 +54,7 @@ function Navbar({ user, onLogout }) {
             Nhà kho
           </Link>
           {/* Only show Employees link for admin users */}
-          {isAdmin && (
+          {(user.role === "admin" || user.role === "quản lý") && (
             <Link
               className={`navbar-brand ${
                 isActive("/employees") ? "fw-bold" : ""
