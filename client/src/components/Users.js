@@ -172,7 +172,7 @@ function Users({ user }) {
               <input 
                 type="text" 
                 className="form-control" 
-                placeholder="Tìm nhân viên theo tên"
+                placeholder="Tìm nhân viên theo tên.."
                 value={searchTerm}
                 onChange={handleSearch}
               />
@@ -185,7 +185,7 @@ function Users({ user }) {
                 onClick={handleAddClick}
                 disabled={createUser.isPending}
               >
-                {createUser.isPending ? 'Adding...' : 'Add User'}
+                {createUser.isPending ? 'Adding...' : 'Thêm nhân viên'}
               </button>
             )}
           </div>
@@ -240,7 +240,7 @@ function Users({ user }) {
                 ))}
                 {filteredUsers.length === 0 && (
                   <tr>
-                    <td colSpan="6" className="text-center py-3">No users found</td>
+                    <td colSpan="6" className="text-center py-3">Không tìm thấy nhân viên!</td>
                   </tr>
                 )}
               </tbody>
@@ -272,23 +272,23 @@ function Users({ user }) {
                 {modalMode === 'view' && selectedUser ? (
                   <div>
                     <div className="row mb-3">
-                      <div className="col-md-3 fw-bold">Username:</div>
+                      <div className="col-md-3 fw-bold">Tên tài khoản:</div>
                       <div className="col-md-9">{selectedUser.username}</div>
                     </div>
                     <div className="row mb-3">
-                      <div className="col-md-3 fw-bold">Full Name:</div>
+                      <div className="col-md-3 fw-bold">Họ và tên:</div>
                       <div className="col-md-9">{selectedUser.full_name}</div>
                     </div>
                     <div className="row mb-3">
-                      <div className="col-md-3 fw-bold">Role:</div>
+                      <div className="col-md-3 fw-bold">Vai trò:</div>
                       <div className="col-md-9">{selectedUser.role}</div>
                     </div>
                     <div className="row mb-3">
-                      <div className="col-md-3 fw-bold">Phone:</div>
+                      <div className="col-md-3 fw-bold">Số điện thoại:</div>
                       <div className="col-md-9">{selectedUser.phone || '-'}</div>
                     </div>
                     <div className="row mb-3">
-                      <div className="col-md-3 fw-bold">Created At:</div>
+                      <div className="col-md-3 fw-bold">Được tạo vào:</div>
                       <div className="col-md-9">
                         {new Date(selectedUser.created_at).toLocaleString()}
                       </div>
@@ -367,7 +367,7 @@ function Users({ user }) {
                   className="btn btn-secondary" 
                   onClick={() => setShowUserModal(false)}
                 >
-                  {modalMode === 'view' ? 'Close' : 'Cancel'}
+                  {modalMode === 'view' ? 'Close' : 'Thoát'}
                 </button>
                 
                 {modalMode !== 'view' && (
@@ -377,7 +377,7 @@ function Users({ user }) {
                     onClick={handleSaveClick}
                     disabled={createUser.isPending || updateUser.isPending}
                   >
-                    {(createUser.isPending || updateUser.isPending) ? 'Saving...' : 'Save'}
+                    {(createUser.isPending || updateUser.isPending) ? 'Saving...' : 'Lưu'}
                   </button>
                 )}
                 
@@ -440,7 +440,7 @@ function Users({ user }) {
                   onClick={handleConfirmDelete}
                   disabled={deleteUser.isPending}
                 >
-                  {deleteUser.isPending ? 'Deleting...' : 'Delete'}
+                  {deleteUser.isPending ? 'Deleting...' : 'Xoá nhân viên'}
                 </button>
               </div>
             </div>
